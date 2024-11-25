@@ -1,0 +1,179 @@
+Organizations:
+  - &OrdererOrg
+    Name: OrdererOrg
+    ID: OrdererMSP
+    MSPDir: ../organizations/ordererOrganizations/insurance.com/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('OrdererMSP.member')"
+      Writers:
+        Type: Signature
+        Rule: "OR('OrdererMSP.member')"
+      Admins:
+        Type: Signature
+        Rule: "OR('OrdererMSP.admin')"
+    OrdererEndpoints:
+      - orderer.insurance.com:7050
+
+  - &insurer
+    Name: insurerMSP
+    ID: insurerMSP
+    MSPDir: ../organizations/peerOrganizations/insurer.insurance.com/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('insurerMSP.admin', 'insurerMSP.peer', 'insurerMSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('insurerMSP.admin', 'insurerMSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('insurerMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('insurerMSP.peer')"
+  
+  - &healthcareProvider
+    Name: healthcareProviderMSP
+    ID: healthcareProviderMSP
+    MSPDir: ../organizations/peerOrganizations/healthcareProvider.insurance.com/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('healthcareProviderMSP.admin', 'healthcareProviderMSP.peer', 'healthcareProviderMSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('healthcareProviderMSP.admin', 'healthcareProviderMSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('healthcareProviderMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('healthcareProviderMSP.peer')"
+
+  - &TPA
+    Name: TPAMSP
+    ID: TPAMSP
+    MSPDir: ../organizations/peerOrganizations/TPA.insurance.com/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('TPAMSP.admin', 'TPAMSP.peer', 'TPAMSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('TPAMSP.admin', 'TPAMSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('TPAMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('TPAMSP.peer')"
+
+  - &regulatoryAuthority
+    Name: regulatoryAuthorityMSP
+    ID: regulatoryAuthorityMSP
+    MSPDir: ../organizations/peerOrganizations/regulatoryAuthority.insurance.com/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('regulatoryAuthorityMSP.admin', 'regulatoryAuthorityMSP.peer', 'regulatoryAuthorityMSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('regulatoryAuthorityMSP.admin', 'regulatoryAuthorityMSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('regulatoryAuthorityMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('regulatoryAuthorityMSP.peer')"
+
+Capabilities:  
+  Channel: &ChannelCapabilities
+    V2_0: true
+  Orderer: &OrdererCapabilities
+    V2_0: true
+  Application: &ApplicationCapabilities
+    V2_5: true
+    
+Application: &ApplicationDefaults
+  Organizations: []
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+    LifecycleEndorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+    Endorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+  Capabilities:
+    <<: *ApplicationCapabilities
+
+Orderer: &OrdererDefaults
+  Addresses:
+    - orderer.insurance.com:7050
+  BatchTimeout: 2s
+  BatchSize:
+    MaxMessageCount: 10
+    AbsoluteMaxBytes: 99 MB
+    PreferredMaxBytes: 512 KB
+  Organizations: []
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+    BlockValidation:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+
+Channel: &ChannelDefaults
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+  Capabilities:
+    <<: *ChannelCapabilities
+
+Profiles:
+  ChannelUsingRaft:
+    <<: *ChannelDefaults
+    Orderer:
+      <<: *OrdererDefaults
+      OrdererType: etcdraft
+      EtcdRaft:
+        Consenters:
+          - Host: orderer.insurance.com
+            Port: 7050
+            ClientTLSCert: ../organizations/ordererOrganizations/insurance.com/orderers/orderer.insurance.com/tls/server.crt
+            ServerTLSCert: ../organizations/ordererOrganizations/insurance.com/orderers/orderer.insurance.com/tls/server.crt
+      Organizations:
+        - *OrdererOrg
+      Capabilities: *OrdererCapabilities
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+        - *insurer
+        - *healthcareProvider
+        - *TPA
+        - *regulatoryAuthority
+      Capabilities: *ApplicationCapabilities
